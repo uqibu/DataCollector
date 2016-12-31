@@ -2,7 +2,7 @@
 
 $servername = "localhost";
 $username   = "root";
-$password   = "dongdong";
+$password   = "11019";
 $dbname     = "yii2basic";
 
 // 创建连接
@@ -14,93 +14,97 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset("utf8");
-//105万到110万
-for ($i=100; $i <= 5000; $i++) {
-  $url = "http://music.163.com/artist?id=$i";
+
+for ($i=18009730; $i <= 18009740; $i++) {
+  $url = "http://music.163.com/user/home?id=$i";
   $urlContent = file_get_contents($url);
-  $userInfos  = explode("=", $url);
   $fileName   = $i.".txt";
-  file_put_contents('./artist/'.$fileName, $urlContent);
-  $transContent = file_get_contents('./artist/'.$fileName);
-  $namePatt     = '/class=\"sname f-thide sname-max\" title=".*\">/';
+  file_put_contents('./user/'.$fileName, $urlContent);
+  $transContent = file_get_contents('./user/'.$fileName);
+
+  /******begin匹配用户名******/
+  $namePatt  = '/<span class="tit f-ff2 s-fc0 f-thide">.*/';
   preg_match($namePatt, $transContent, $match);
   if (empty($match)) {
-      echo "artist=".$i." not exists"."\n";
-      unlink('./artist/'.$fileName);
+      echo "userid=".$i." not exists"."\n";
+      unlink('./user/'.$fileName);
       continue;
   }
-  $nameInfo     = $match[0];
-  $nameInfo     = str_replace("class=\"sname f-thide sname-max\" title=\"", "", $nameInfo);
-  $nameInfo     = str_replace("\"", "", $nameInfo);
-  $nameInfo     = str_replace(">", "", $nameInfo);
-  $nameArrs     = explode(" - ", $nameInfo);
-  $artistName   = $nameArrs[0];
+  $uname = $match[0];
+  /******匹配用户名end******/
 
-  $aliasName    = !empty($nameArrs[0]) ? $nameArrs[0] : "无";
-  $artistId     = $i;
-  $password     = "123456";
+  /******begin匹配用户level******/
+  $levelPatt  = '/<span class="lev u-lev u-icn2 u-icn2-lev">.*/';
+  preg_match($levelPatt, $transContent, $match);
+  $level = $match[0];
+  /******匹配用户level end******/
 
-  $stmt = $conn->prepare("INSERT INTO artist(artistid, artistname, aliasname, password)
-                          VALUES(?, ?, ?, ?)");
-  $stmt->bind_param("isss", $artistid, $artistname, $aliasname, $password);
-  $artistid   = $artistId;
-  $artistname = $artistName;
-  $aliasname  = $aliasName;
-  $password   = $password;
-  $artistInsert = $stmt->execute();
-  if($artistInsert) {
-     echo "artist info insert success"."\n";
-  } else {
-     echo "artist info insert failed"."\n";
+  /******begin匹配用户省市******/
+  $wherePatt  = '/所在地区：.*/';
+  preg_match($wherePatt, $transContent, $match);
+  $whereInfo = str_replace("所在地区：","",$match[0]);
+  $whereAll  = explode(" - ", $whereInfo);
+  $province  = isset($whereAll[0])?$whereAll[0]:"";
+  $city      = isset($whereAll[1])?$whereAll[1]:"";
+  /******匹配用户省市end******/
+
+  /******begin匹配用户年龄******/
+  $agePatt   = '/data-age=".*"/';
+  preg_match($agePatt, $transContent, $match);
+  if (!isset($match)) {
+      $age = "";
   }
+  $ageInfo = str_replace("data-age=\"","",$match[0]);
+  $ageNum  = str_replace("\"","",$ageInfo);
+  $age     = date("Y-m-d H:i:s",($ageNum/1000));
+  /******匹配用户年龄end******/
 
-   /*通过预处理方式新增歌曲信息*/
+  /******begin匹配用户weibo******/
+  $weiboPatt   = '/http:\/\/weibo.com\/u\/[1-9]{1}[0-9]{2,}/';
+  preg_match($weiboPatt, $transContent, $match);
+  if (!isset($match)) {
+      $weibo = "";
+  }
+  $weibo = $match[0];
+  /******匹配用户weiboend******/
 
-   $songPatt  = '/<textarea style="display:none;">.*/';
-               preg_match($songPatt, $transContent, $match);
-               $str     = (string)($match[0]);
-               $newStr  = str_replace("style=\"display:none;\"", "", $str);
-               $newStr  = str_replace("<textarea >", "", $newStr);
-               $newStr  = str_replace("</textarea>", "", $newStr);
-               $arrs    = json_decode($newStr);
-               $subSong = array();
-               $song    = array();
-               $stmtSong= $conn->prepare("INSERT INTO artistsong
-                                        (songId, songName, albumId, artistId, score, mvid)
-                                        VALUES(?, ?, ?, ?, ?, ?)");
-               $stmtSong->bind_param("isiisi", $songId, $songName, $albumId, $artistId, $score, $mvid);
+  /******begin匹配用户douban******/
+  $doubanPatt   = '/http:\/\/www.douban.com\/people\/[1-9]{1}[0-9]{2,}/';
+  preg_match($doubanPatt, $transContent, $match);
+  if (!isset($match)) {
+      $douban = "";
+  }
+  $douban = $match[0];
+  /******匹配用户doubanend******/
 
-               $stmtAlbum= $conn->prepare("INSERT INTO artistalbum
-                                         (albumId, albumName, artistId)
-                                         VALUES(?, ?, ?)");
-               $stmtAlbum->bind_param("isi", $zjId, $zjName, $artistId);
+  /******begin匹配用户简介******/
+  $summarizePatt   = '/个人介绍：.*/';
+  preg_match($summarizePatt, $transContent, $match);
+  if (!isset($match)) {
+      $summarize = "";
+  }
+  $summarize = str_replace("个人介绍：","",$match[0]);
+  /******匹配用户简介end******/
 
-               foreach ($arrs as $key => $value) {
-                 $songId   = $value->id;
-                 $songName = $value->name;
-                 $albumId  = $value->album->id;
-                 $artistId = $artistId;
-                 $score    = $value->mvid;
-                 $mvid     = $value->score;
-                 $sCreate  = $stmtSong->execute();
-                 
-                 $zjId     = $value->album->id;
-                 $zjName   = $value->album->name;
-                 $artistId = $artistId;
-                 $aCreate  = $stmtAlbum->execute();
-
-                 if ($sCreate && $aCreate) {
-                     echo "song and album insert success"."\n";
-                 } elseif ($sCreate && !$aCreate) {
-                     echo "song insert success but album failed"."\n";
-                 } elseif (!$sCreate && $aCreate) {
-                     echo "album insert success but song failed"."\n";
-                 } else {
-                     echo "song and album insert failed"."\n";
-                 }
-             
-               }
-  unlink('./artist/'.$fileName);
+  $stmt = $conn->prepare("INSERT INTO 163user(uid,uname,level,province,city,age,weibo,douban,summarize)
+                          VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  $stmt->bind_param("isissssss", $uid,$uname,$level,$province,$city,$age,$weibo,$douban,$summarize);
+  $uid      = $uid;
+  $uname    = $uname;
+  $level    = $level;
+  $province = $province;
+  $city     = $city;
+  $age      = $age;
+  $weibo    = $age;
+  $douban   = $douban;
+  $summarize= $summarize;
+  $userInsert = $stmt->execute();
+  if($userInsert) {
+     echo "$i info insert success"."\n";
+  } else {
+     echo "$i info insert failed"."\n";
+  }
+  unlink('./user/'.$fileName);
   echo "***************"."\n";
 
 }

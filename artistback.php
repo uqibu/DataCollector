@@ -2,7 +2,7 @@
 
 $servername = "localhost";
 $username   = "root";
-$password   = "dongdong";
+$password   = "11019";
 $dbname     = "yii2basic";
 
 // 创建连接
@@ -15,7 +15,7 @@ if ($conn->connect_error) {
 
 $conn->set_charset("utf8");
 //105万到110万
-for ($i=8259; $i <= 8259; $i++) {
+for ($i=9000; $i < 9600; $i++) {
   $url = "http://music.163.com/artist?id=$i";
   $urlContent = file_get_contents($url);
   $userInfos  = explode("=", $url);
@@ -85,7 +85,7 @@ for ($i=8259; $i <= 8259; $i++) {
                  $score    = $value->score;
                  $mvid     = $value->mvid;
                  $sCreate  = $stmtSong->execute();
-                 
+
                  $zjId     = $value->album->id;
                  $zjName   = $value->album->name;
                  $artistId = $artistId;
@@ -100,7 +100,7 @@ for ($i=8259; $i <= 8259; $i++) {
                  } else {
                      echo "songid ".$value->id." and albumid".$value->album->id." insert failed"."\n";
                  }
-             
+
                }
   unlink('./artist/'.$fileName);
   echo "***************"."\n";
